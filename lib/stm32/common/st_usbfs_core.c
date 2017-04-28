@@ -178,7 +178,9 @@ void st_usbfs_ep_nak_set(usbd_device *dev, uint8_t addr, uint8_t nak)
 	if (nak) {
 		USB_SET_EP_RX_STAT(addr, USB_EP_RX_STAT_NAK);
 	} else {
-		USB_SET_EP_RX_STAT(addr, USB_EP_RX_STAT_VALID);
+		if ((*USB_EP_REG(addr) & USB_EP_RX_CTR) == 0) {
+			USB_SET_EP_RX_STAT(addr, USB_EP_RX_STAT_VALID);
+		}
 	}
 }
 
@@ -210,9 +212,9 @@ uint16_t st_usbfs_ep_read_packet(usbd_device *dev, uint8_t addr,
 	len = MIN(USB_GET_EP_RX_COUNT(addr) & 0x3ff, len);
 	st_usbfs_copy_from_pm(buf, USB_GET_EP_RX_BUFF(addr), len);
 
-	if (!st_usbfs_force_nak[addr]) {
-		USB_SET_EP_RX_STAT(addr, USB_EP_RX_STAT_VALID);
-	}
+	//if (!st_usbfs_force_nak[addr]) {
+	//	USB_SET_EP_RX_STAT(addr, USB_EP_RX_STAT_VALID);
+	//}
 
 	return len;
 }
@@ -252,6 +254,9 @@ void st_usbfs_poll(usbd_device *dev)
 
 		if (istr & USB_ISTR_DIR) {
 			USB_CLR_EP_RX_CTR(ep);
+			if (!st_usbfs_force_nak[ep]) {
+				USB_SET_EP_RX_STAT(ep, USB_EP_RX_STAT_VALID);
+			}
 		}
 	}
 
