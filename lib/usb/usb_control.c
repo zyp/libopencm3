@@ -39,6 +39,11 @@ LGPL License Terms @ref lgpl_license
 #include <libopencm3/usb/usbd.h>
 #include "usb_private.h"
 
+#undef STM32F0
+#define STM32F0
+#include <libopencm3/stm32/gpio.h>
+#include <libopencm3/stm32/st_usbfs.h>
+
 /*
  * According to the USB 2.0 specification, section 8.5.3, when a control
  * transfer is stalled, the pipe becomes idle. We provide one utility to stall
@@ -227,7 +232,10 @@ void _usbd_control_setup(usbd_device *usbd_dev, uint8_t ea)
 
 	usbd_ep_nak_set(usbd_dev, 0, 1);
 
-	if (usbd_ep_read_packet(usbd_dev, 0, req, 8) != 8) {
+  const uint16_t res = usbd_ep_read_packet(usbd_dev, 0, req, 8);
+	if (res != 8) {
+  gpio_clear(GPIOA, GPIO1);
+  __asm__("bkpt");
 		stall_transaction(usbd_dev);
 		return;
 	}

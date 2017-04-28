@@ -26,6 +26,10 @@
 #include "../../usb/usb_private.h"
 #include "st_usbfs_core.h"
 
+#undef STM32F0
+#define STM32F0
+#include <libopencm3/stm32/gpio.h>
+
 /* TODO - can't these be inside the impls, not globals from the core? */
 uint8_t st_usbfs_force_nak[8];
 struct _usbd_device st_usbfs_dev;
@@ -241,7 +245,9 @@ void st_usbfs_poll(usbd_device *dev)
 		}
 
 		if (dev->user_callback_ctr[ep][type]) {
+	gpio_clear(GPIOB, GPIO6);
 			dev->user_callback_ctr[ep][type] (dev, ep);
+	gpio_set(GPIOB, GPIO6);
 		}
 
 		if (istr & USB_ISTR_DIR) {
