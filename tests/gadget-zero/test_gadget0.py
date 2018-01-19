@@ -11,8 +11,8 @@ PRODUCT_ID=0xcafe
 
 # you only need to worry about these if you are trying to explicitly test
 # a single target.  Normally, the test will autofind the attached target
-#DUT_SERIAL = "stm32f429i-disco"
-DUT_SERIAL = "stm32f4disco"
+DUT_SERIAL = "stm32f429i-disco"
+#DUT_SERIAL = "stm32f4disco"
 #DUT_SERIAL = "stm32f103-generic"
 #DUT_SERIAL = "stm32l1-generic"
 #DUT_SERIAL = "stm32f072disco"
@@ -246,6 +246,7 @@ class TestControlTransfer_Reads(unittest.TestCase):
         self.assertIsNotNone(self.cfg, "Config 2 should exist")
         self.dev.set_configuration(self.cfg)
         self.req = uu.CTRL_IN | uu.CTRL_TYPE_VENDOR | uu.CTRL_RECIPIENT_INTERFACE
+        self.req_out = uu.CTRL_OUT | uu.CTRL_TYPE_VENDOR | uu.CTRL_RECIPIENT_INTERFACE
 
     def inner_t(self, wVal, read_len):
         wVal = int(wVal)
@@ -277,6 +278,25 @@ class TestControlTransfer_Reads(unittest.TestCase):
         inner(ep0_size - 7)
         inner(ep0_size + 11)
         inner(ep0_size * 4 + 11)
+
+    def test_loopback(self) :
+        """
+        Can we request x control in when we tell the device to produce x?
+        :return:
+        """
+        def inner(x):
+            x = int(x)
+            buf_out = array.array('b')
+            for i in range(0,x) : buf_out.append(48 + (x+i) % 10)
+            self.dev.ctrl_transfer(self.req_out, GZ_REQ_WRITE_LOOPBACK_BUFFER, x, 0, buf_out)
+            buf_in = self.dev.ctrl_transfer(self.req, GZ_REQ_READ_LOOPBACK_BUFFER, x, 0, x)
+            self.assertEqual(len(buf_in), x,  "Should have read as much as we asked for")
+            self.assertEqual(buf_in, buf_out,
+                             "Buffers don't match!\n - buf_out : %r\n - buf_in  : %r" %(
+                                 buf_out.tobytes(), buf_in.tobytes()))
+        
+        ep0_size = self.dev.bMaxPacketSize0
+        for i in range(4, ep0_size) : inner(i)
 
     def test_waytoobig(self):
         """
